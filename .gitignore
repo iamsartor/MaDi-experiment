@@ -1,0 +1,14 @@
+# Confidential wording: never commit real items files
+design/studies/*.items.json
+!design/studies/restaurant-demo.items.json
+# Response batches and outputs may contain confidential data
+analysis/data/*
+!analysis/data/restaurant-demo.simulated.*
+analysis/output/
+# Credentials
+*service-account*.json
+*.key.json
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache/
