@@ -15,3 +15,6 @@ __pycache__/
 node_modules/
 firebase-debug.log
 firestore-debug.log
+
+# Single-file survey builds contain the wording
+dist/

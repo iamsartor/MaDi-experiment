@@ -9,15 +9,20 @@
 //           Built by design/make_link.py. The part after "#" is never sent to any
 //           server, so the wording reaches neither GitHub nor Firebase.
 //
+// Single-file variant: design/build_html.py inlines this script into one HTML
+// file together with window.MAXDIFF_EMBED = {design, wording, firebaseConfig,
+// mode, emulator} and the Firebase bundle (window.FirebaseLite). Then nothing is
+// read from the URL or the network except the final write to Firestore.
+//
 // What is written to Firestore (live mode only): item ids, picks, timings,
 // segment option ids. Never any wording. See docs/data-formats.md.
 
-import { firebaseConfig } from "./firebase-config.js";
-
+const EMBED = window.MAXDIFF_EMBED || null;
 const app = document.getElementById("app");
 const params = new URLSearchParams(location.search);
-const studyId = (params.get("study") || "").trim();
-const mode = ["test", "local"].includes(params.get("mode")) ? params.get("mode") : "live";
+const studyId = EMBED ? EMBED.design.studyId : (params.get("study") || "").trim();
+const requestedMode = EMBED ? EMBED.mode : params.get("mode");
+const mode = ["test", "local"].includes(requestedMode) ? requestedMode : "live";
 const saves = mode === "live";
 const doneKey = `maxdiff-done:${studyId}`;
 
@@ -61,6 +66,7 @@ function fail(message) {
 // ---------------------------------------------------------------- loading
 
 async function decodeWording() {
+  if (EMBED) return EMBED.wording;
   const m = location.hash.match(/[#&]w=([A-Za-z0-9_-]+)/);
   if (!m) throw new Error("This link is incomplete. Please use the full link you received.");
   const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -77,10 +83,14 @@ let fs = null;
 async function firestore() {
   if (!db) {
     // Self-hosted Firebase bundle (see tools/build_firebase_bundle.sh), loaded only when needed.
-    fs = await import("./vendor/firebase-lite.js");
-    db = fs.getFirestore(fs.initializeApp(firebaseConfig));
-    // Developer testing against the local emulator: only on localhost, with &emulator=1
-    if (["localhost", "127.0.0.1"].includes(location.hostname) && params.get("emulator") === "1") {
+    // In a single-file build it is already inlined as window.FirebaseLite.
+    fs = window.FirebaseLite || (await import("./vendor/firebase-lite.js"));
+    const config = EMBED ? EMBED.firebaseConfig : (await import("./firebase-config.js")).firebaseConfig;
+    db = fs.getFirestore(fs.initializeApp(config));
+    // Developer testing against the local emulator: only on localhost with &emulator=1,
+    // or in a single-file build made with --emulator.
+    const onLocalhost = ["localhost", "127.0.0.1"].includes(location.hostname) && params.get("emulator") === "1";
+    if (onLocalhost || (EMBED && EMBED.emulator)) {
       fs.connectFirestoreEmulator(db, "127.0.0.1", 8080);
     }
   }
@@ -88,6 +98,7 @@ async function firestore() {
 }
 
 async function loadConfig() {
+  if (EMBED) return EMBED.design;
   if (mode === "local") {
     const res = await fetch(`studies/${encodeURIComponent(studyId)}.design.json`, { cache: "no-store" });
     if (!res.ok) throw new Error(`No local design file for "${studyId}".`);
@@ -242,8 +253,13 @@ async function submit() {
   } catch (e) {
     console.error(e);
     const retry = el("button", { class: "btn", onclick: submit }, "Try again");
+    if (e && e.code === "permission-denied") {
+      return show(el("h1", {}, "Survey not open"), el("p", { class: "error" },
+        "This survey is closed or not open yet, so your answers could not be saved."));
+    }
     show(el("h1", {}, "Could not save"), el("p", { class: "error" },
-      "Your answers could not be saved. Please check your connection and try again."), retry);
+      "Your answers could not be saved. Please check your connection and try again. " +
+      "If it keeps failing, your network may block the survey service."), retry);
   }
 }
 
@@ -265,7 +281,9 @@ async function main() {
     console.error(e);
     return fail(e.message || "The survey could not be loaded.");
   }
-  if (mode === "live" && state.cfg.status !== "open") {
+  // Embedded files carry a copy of the design; whether the study is open is
+  // checked by the Firestore rules when the answers are saved.
+  if (mode === "live" && !EMBED && state.cfg.status !== "open") {
     return fail("This survey is not open at the moment.");
   }
   if (state.w.title) document.title = state.w.title;

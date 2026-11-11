@@ -13,5 +13,9 @@ npm install --silent "firebase@$VERSION" esbuild@0.24
 npx esbuild entry.js --bundle --format=esm --minify --target=es2020 \
   --banner:js="/* Firebase JS SDK $VERSION (app + firestore/lite), Apache-2.0. Built by tools/build_firebase_bundle.sh */" \
   --outfile="$ROOT/survey/vendor/firebase-lite.js"
+# Same SDK as a classic script (window.FirebaseLite), inlined by design/build_html.py
+npx esbuild entry.js --bundle --format=iife --global-name=FirebaseLite --minify --target=es2020 \
+  --banner:js="/* Firebase JS SDK $VERSION (app + firestore/lite), Apache-2.0. Built by tools/build_firebase_bundle.sh */" \
+  --outfile="$ROOT/survey/vendor/firebase-lite.iife.js"
 rm -rf "$TMP"
-echo "Wrote survey/vendor/firebase-lite.js (firebase $VERSION)"
+echo "Wrote survey/vendor/firebase-lite.js and firebase-lite.iife.js (firebase $VERSION)"
