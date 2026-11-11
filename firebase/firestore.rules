@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// MaxDiff security rules.
+//   studies/{studyId}   public single-document read (ids only), no client writes
+//   responses/{id}      create-only, validated; nobody can read, change or delete from a browser
+// Analysis reads responses with the Firebase Admin SDK, which bypasses these rules.
+// Tests: firebase/tests/rules.test.mjs (run against the emulator).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /studies/{studyId} {
+      allow get: if true;
+      allow list, create, update, delete: if false;
+    }
+
+    match /responses/{responseId} {
+      allow read, update, delete: if false;
+      allow create: if validResponse(request.resource.data);
+    }
+
+    function validResponse(d) {
+      let study = get(/databases/$(database)/documents/studies/$(d.studyId)).data;
+      return d.keys().hasOnly(['studyId', 'version', 'answers', 'segments', 'durationSec', 'client', 'createdAt'])
+        && d.keys().hasAll(['studyId', 'version', 'answers', 'segments', 'durationSec', 'createdAt'])
+        && d.studyId is string && d.studyId.size() <= 100
+        && exists(/databases/$(database)/documents/studies/$(d.studyId))
+        && study.status == 'open'
+        && d.version is int && d.version >= 0 && d.version < study.versions.size()
+        && d.answers is list
+        && d.answers.size() == study.versions[d.version].screens.size()
+        && d.segments is map && d.segments.size() <= 20
+        && d.durationSec is number && d.durationSec >= 0 && d.durationSec < 86400
+        && (!('client' in d) || (d.client is map && d.client.size() <= 5))
+        && d.createdAt == request.time;
+    }
+  }
+}
