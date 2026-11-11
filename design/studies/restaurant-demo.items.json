@@ -4,6 +4,7 @@
   "title": "Choosing a restaurant",
   "intro": "On each screen you will see 4 aspects of a restaurant. Pick the one that matters MOST and the one that matters LEAST to you. There are no right or wrong answers.",
   "question": {
+    "prompt": "Which matters most, and which matters least, when you choose a restaurant?",
     "best": "Most important when choosing a restaurant",
     "worst": "Least important when choosing a restaurant"
   },

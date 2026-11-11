@@ -10,7 +10,7 @@ Only the **items file** contains wording; every other format contains ids only.
   "studyId": "restaurant-demo",
   "title": "Choosing a restaurant",
   "intro": "Text shown before the first screen",
-  "question": { "best": "Most important …", "worst": "Least important …" },
+  "question": { "prompt": "Which matters most, and which matters least, …?", "best": "Most important …", "worst": "Least important …" },
   "items": [ { "id": "I01", "text": "Taste and quality of the food" } ],
   "segmentQuestions": [
     { "id": "S1", "text": "How often do you eat out?",
@@ -19,7 +19,9 @@ Only the **items file** contains wording; every other format contains ids only.
 }
 ```
 
-Keys starting with `_` are comments and ignored.
+Keys starting with `_` are comments and ignored. `question.prompt` is shown above each screen; `best`/`worst` are used as accessible button labels.
+
+The survey link carries a compressed copy of this wording after `#` (built by `design/make_link.py`): `{studyId, title, intro, question, items: {id: text}, segments: {qid: {text, options: {oid: text}}}}`.
 
 ## 2. Design file — `design/studies/<studyId>.design.json` (→ Firestore `studies/{studyId}`)
 

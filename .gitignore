@@ -12,3 +12,6 @@ analysis/output/
 __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
+node_modules/
+firebase-debug.log
+firestore-debug.log

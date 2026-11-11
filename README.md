@@ -2,7 +2,7 @@
 
 A small, self-hosted toolkit for running MaxDiff (Best-Worst Scaling) studies without a paid survey platform.
 
-**Status (11 Nov 2026):** offline core done and tested: design generator, respondent simulator, batch analysis notebook. Not built yet: the survey page and the Firebase setup (`survey/`, `firebase/` are empty placeholders).
+**Status (11 Nov 2026):** design generator, respondent simulator, batch analysis notebook, survey page and Firestore rules are built and tested (locally and against the Firestore emulator). Not yet done: a pilot against the live Firebase project. Setup and running a study: [docs/firebase-setup.md](docs/firebase-setup.md).
 
 ## How it fits together
 
@@ -12,7 +12,7 @@ items file (local, confidential wording)
    ▼
 design/generate_design.py ──► <study>.design.json  (Firestore-ready config, ids only)
                                    │
-                    survey page (next step) shows wording, writes responses (ids only) to Firestore
+   survey link ?study=<id>#w=<wording>: page shows wording, writes responses (ids only) to Firestore
                                    │
 analysis/export.py  ◄── pulls one batch of responses ──┘
    │
@@ -31,9 +31,11 @@ Item and question **wording never goes to Firebase**. Every study has two files:
 | `design/studies/<study>.items.json` | wording of title, intro, question, items, segment questions | stays on your machine; later also served with the survey page |
 | `design/studies/<study>.design.json` | item ids, set size, design versions, segment option ids | uploaded to Firestore |
 
-Responses in Firestore hold ids only (`"best": "I07"`). The notebook joins wording back from the local items file just for labels. A test (`tests/test_pipeline.py`) fails if wording ever appears in a config or response.
+Respondents get the wording through the survey link itself: `design/make_link.py` packs it after the `#`, a part of the URL that browsers never send to any server. So the wording is in neither GitHub nor Firebase; only people holding the link can read it. Treat the link as confidential.
 
-`.gitignore` excludes every `*.items.json` except the demo, so real wording does not land in a git repo by accident. Until encryption is built (backlog), the items file served with the survey page would be readable by anyone who has its URL.
+Responses in Firestore hold ids only (`"best": "I07"`), and the Firestore rules reject any extra fields. The notebook joins wording back from the local items file just for labels. Tests fail if wording ever appears in a config, a response, or the part of the link sent to servers.
+
+`.gitignore` excludes every `*.items.json` except the demo, so real wording does not land in the (public) repo by accident.
 
 ## Quickstart
 
@@ -65,13 +67,15 @@ python -m pytest -q
 1. Copy `design/studies/restaurant-demo.items.json` to `design/studies/<your-study>.items.json`, set `studyId` and the wording. Use neutral ids (`I01`, `I02` …) that reveal nothing.
 2. Run the design generator on it and check the report says **PASS**.
 3. Run the simulator on the new design and the notebook on its output, to see the screens and charts before going live.
-4. (Next build steps) upload the design to Firestore, publish the survey link, then pull batches with `analysis/export.py` or straight from the notebook (`SOURCE = "firestore"`).
+4. Upload the design, test the link, open the study, send the link, analyse batches: [docs/firebase-setup.md](docs/firebase-setup.md#running-a-study).
 
 ## Folder map
 
 | Path | What |
 | --- | --- |
 | `design/generate_design.py` | balanced design generator + balance report → [docs/design-generator.md](docs/design-generator.md) |
+| `design/make_link.py` | builds the survey link with the wording after `#` → [docs/survey.md](docs/survey.md) |
+| `design/upload_study.py` | uploads a design to Firestore, changes study status |
 | `design/studies/` | per-study items files (local), design files, demo truth files |
 | `tools/simulate_respondents.py` | fake respondents with known utilities → [docs/simulator.md](docs/simulator.md) |
 | `analysis/models.py` | scoring, logit model, segments, charts → [docs/analysis.md](docs/analysis.md) |
@@ -79,16 +83,17 @@ python -m pytest -q
 | `analysis/maxdiff.ipynb` | the batch analysis notebook |
 | `analysis/data/` | response batches (`.jsonl`) |
 | `analysis/output/<study>/` | scores CSVs and charts |
-| `tests/` | end-to-end tests |
-| `survey/`, `firebase/` | next build step |
+| `survey/` | the survey page (GitHub Pages) → [docs/survey.md](docs/survey.md) |
+| `firebase/` | Firestore rules, rules tests → [docs/firebase-setup.md](docs/firebase-setup.md) |
+| `tools/build_firebase_bundle.sh` | rebuilds the self-hosted Firebase SDK bundle |
+| `tests/` | Python tests; `tests/browser/` Playwright survey test |
 | [docs/data-formats.md](docs/data-formats.md) | every file and document format |
 
 Architecture and decisions: the Claude Doc "MaxDiff Survey Tool – Architecture".
 
 ## Backlog
 
-- Survey page and Firebase setup (next)
-- Encrypt the items file served with the survey (key in the link after `#`)
+- Firebase App Check against scripted spam
 - Panel completion redirect and `?src=` tracking
 - Live results view
 - Save partial responses to measure drop-off
