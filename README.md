@@ -4,6 +4,8 @@ A small, self-hosted toolkit for running MaxDiff (Best-Worst Scaling) studies wi
 
 **Status (11 Nov 2026):** design generator, respondent simulator, batch analysis notebook, survey page and Firestore rules are built and tested (locally and against the Firestore emulator). Not yet done: a pilot against the live Firebase project. Setup and running a study: [docs/firebase-setup.md](docs/firebase-setup.md).
 
+**Try the demo:** [restaurant demo survey](https://iamsartor.github.io/MaDi-experiment/examples/restaurant-demo.html) (test mode, saves nothing, dummy content).
+
 ## How it fits together
 
 ```
