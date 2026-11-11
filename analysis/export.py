@@ -47,14 +47,16 @@ def pull_batch(study_id, credentials=None, project=None, out_dir=None, collectio
     from firebase_admin import credentials as fb_cred, firestore
     from google.cloud.firestore_v1.base_query import FieldFilter
 
-    if not firebase_admin._apps:
-        if credentials:
+    if credentials:
+        if not firebase_admin._apps:
             firebase_admin.initialize_app(fb_cred.Certificate(str(Path(credentials).expanduser())))
-        elif os.environ.get("FIRESTORE_EMULATOR_HOST"):
-            firebase_admin.initialize_app(options={"projectId": project or "demo-maxdiff"})
-        else:
-            raise SystemExit("Give --credentials (service-account key) or set FIRESTORE_EMULATOR_HOST.")
-    db = firestore.client()
+        db = firestore.client()
+    elif os.environ.get("FIRESTORE_EMULATOR_HOST"):
+        from google.auth.credentials import AnonymousCredentials
+        from google.cloud import firestore as gfs
+        db = gfs.Client(project=project or "demo-maxdiff", credentials=AnonymousCredentials())
+    else:
+        raise SystemExit("Give --credentials (service-account key) or set FIRESTORE_EMULATOR_HOST.")
     docs = db.collection(collection).where(filter=FieldFilter("studyId", "==", study_id)).stream()
 
     out_dir = Path(out_dir or HERE / "data")
