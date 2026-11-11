@@ -84,6 +84,7 @@ Step-by-step guide, including a ready-made AI prompt for the items file: **[docs
 | `tools/simulate_respondents.py` | fake respondents with known utilities → [docs/simulator.md](docs/simulator.md) |
 | `analysis/models.py` | scoring, logit model, segments, charts → [docs/analysis.md](docs/analysis.md) |
 | `analysis/export.py` | pulls one batch of responses from Firestore |
+| `analysis/collect_offline.py` | collects results sent back from offline files (saved or pasted) into one batch → [docs/new-study.md](docs/new-study.md#offline-pilot-no-firebase) |
 | `analysis/maxdiff.ipynb` | the batch analysis notebook |
 | `analysis/data/` | response batches (`.jsonl`) |
 | `analysis/output/<study>/` | scores CSVs and charts |

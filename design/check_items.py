@@ -30,6 +30,9 @@ def check(doc) -> list[str]:
     for key in ("title", "intro"):
         if not isinstance(doc.get(key), str) or not doc[key].strip():
             p.append(f"{key}: missing or empty.")
+    if "contact" in doc and (not isinstance(doc["contact"], str) or not doc["contact"].strip()
+                             or len(doc["contact"]) > 80):
+        p.append('contact: optional; if given, a short name like "Jane Doe" (offline builds show it).')
     q = doc.get("question")
     if not isinstance(q, dict):
         p.append("question: missing (needs prompt, best, worst).")

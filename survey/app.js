@@ -11,19 +11,29 @@
 //
 // Single-file variant: design/build_html.py inlines this script into one HTML
 // file together with window.MAXDIFF_EMBED = {design, wording, firebaseConfig,
-// mode, emulator} and the Firebase bundle (window.FirebaseLite). Then nothing is
-// read from the URL or the network except the final write to Firestore.
+// mode, emulator, contact} and the Firebase bundle. Then nothing is read from
+// the URL or the network except the final write to Firestore.
 //
-// What is written to Firestore (live mode only): item ids, picks, timings,
-// segment option ids. Never any wording. See docs/data-formats.md.
+// Offline variant (single file only, EMBED.mode = "offline"): no Firebase bundle,
+// firebaseConfig null, no network call at all. At the end the respondent saves or
+// copies the result (one line of JSON, ids only) and sends it back, e.g. in Teams.
+// build_html.py removes the Firebase block below (between the firebase-block
+// markers) from offline builds.
+//
+// What is written to Firestore (live mode only), or into the offline result:
+// item ids, picks, timings, segment option ids. Never any wording.
+// See docs/data-formats.md.
 
 const EMBED = window.MAXDIFF_EMBED || null;
 const app = document.getElementById("app");
 const params = new URLSearchParams(location.search);
 const studyId = EMBED ? EMBED.design.studyId : (params.get("study") || "").trim();
 const requestedMode = EMBED ? EMBED.mode : params.get("mode");
-const mode = ["test", "local"].includes(requestedMode) ? requestedMode : "live";
+// "offline" is accepted only from an embedded build, never from the URL.
+const mode = ["test", "local"].includes(requestedMode) ? requestedMode
+  : (EMBED && requestedMode === "offline") ? "offline" : "live";
 const saves = mode === "live";
+const offline = mode === "offline";
 const doneKey = `maxdiff-done:${studyId}`;
 
 // ---------------------------------------------------------------- helpers
@@ -80,7 +90,9 @@ async function decodeWording() {
 
 let db = null;
 let fs = null;
+// firebase-block-start
 async function firestore() {
+  if (offline) throw new Error("Offline mode makes no network calls.");
   if (!db) {
     // Self-hosted Firebase bundle (see tools/build_firebase_bundle.sh), loaded only when needed.
     // In a single-file build it is already inlined as window.FirebaseLite.
@@ -96,6 +108,7 @@ async function firestore() {
   }
   return { db, fs };
 }
+// firebase-block-end
 
 async function loadConfig() {
   if (EMBED) return EMBED.design;
@@ -127,7 +140,7 @@ const state = {
 // ---------------------------------------------------------------- views
 
 function testBadge() {
-  return mode === "live" ? null : el("div", { class: "badge" }, `${mode.toUpperCase()} MODE · answers are not saved`);
+  return mode === "live" || offline ? null : el("div", { class: "badge" }, `${mode.toUpperCase()} MODE · answers are not saved`);
 }
 
 function viewIntro() {
@@ -136,8 +149,9 @@ function viewIntro() {
     testBadge(),
     el("h1", {}, w.title || "Survey"),
     el("p", {}, w.intro || ""),
-    el("p", { class: "muted small" },
-      `${state.screens.length} short screens. Your answers are anonymous: we do not store your name, email or IP address with them.`),
+    el("p", { class: "muted small" }, offline
+      ? `${state.screens.length} short screens. Your result contains no name or email. You send it to us yourself, so we will see who sent it. We only look at results in aggregate.`
+      : `${state.screens.length} short screens. Your answers are anonymous: we do not store your name, email or IP address with them.`),
     el("button", { class: "btn", onclick: () => (hasSegments() ? viewSegments() : startChoices()) }, "Start"),
   );
 }
@@ -235,7 +249,14 @@ async function submit() {
     durationSec: Math.round((Date.now() - state.startedAt) / 1000),
     client: { mobile: matchMedia("(pointer: coarse)").matches },
   };
+  if (offline) response.client.offline = true;
   window.__maxdiffResponse = response; // for automated tests
+  if (offline) {
+    const text = JSON.stringify(response) + "\n";
+    viewOfflineResult(text, "Almost done: please send us your result");
+    storageSet(doneKey, text);
+    return;
+  }
   if (!saves) {
     show(
       testBadge(),
@@ -263,10 +284,102 @@ async function submit() {
   }
 }
 
+// ---------------------------------------------------------------- offline end screen
+
+function randomSuffix(n = 6) {
+  const abc = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(n));
+  return Array.from(bytes, (b) => abc[b % abc.length]).join("");
+}
+
+// The result text is one line of compact JSON plus "\n", ids only.
+function viewOfflineResult(text, heading) {
+  const contact = (EMBED && typeof EMBED.contact === "string" && EMBED.contact.trim())
+    || "the person who sent you this survey";
+  const filename = `${studyId}-result-${randomSuffix()}.json`;
+  const box = el("textarea", {
+    id: "result-text", class: "result", readonly: true, rows: 6,
+    spellcheck: "false", "aria-label": "Your result",
+  });
+  box.value = text;
+  const status = el("p", { id: "result-status", class: "status", role: "status" });
+  let timer = null;
+  const say = (msg, ms) => {
+    clearTimeout(timer);
+    status.textContent = msg;
+    if (ms) timer = setTimeout(() => { status.textContent = ""; }, ms);
+  };
+
+  const save = () => {
+    try {
+      const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+      const a = el("a", { href: url, download: filename, style: "display:none" });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      say(`Saved as ${filename} (usually in your Downloads folder).`);
+    } catch (e) {
+      console.error(e);
+      say("Saving did not work here. Please click Copy result instead.");
+    }
+  };
+
+  const copyFallback = () => {
+    box.focus();
+    box.select();
+    box.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    if (ok) say("Copied ✓", 2000);
+    else say("Select the text below and press Ctrl+C");
+  };
+  const copy = async () => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error("no clipboard API");
+      await navigator.clipboard.writeText(text);
+      say("Copied ✓", 2000);
+    } catch {
+      copyFallback();
+    }
+  };
+
+  show(
+    el("h1", {}, heading),
+    el("p", {}, `Click Save result and send the file to ${contact} in Teams. ` +
+      "If saving does not work, click Copy result and paste it into a Teams message."),
+    el("div", { class: "actions" },
+      el("button", { class: "btn", type: "button", id: "save-result", onclick: save }, "Save result"),
+      el("button", { class: "btn secondary", type: "button", id: "copy-result", onclick: copy }, "Copy result"),
+    ),
+    status,
+    box,
+    el("p", { class: "muted small" }, "The result contains only codes (like I07), no text and no name."),
+  );
+}
+
+function storedOfflineResult() {
+  const text = storageGet(doneKey);
+  if (!text) return null;
+  try {
+    const r = JSON.parse(text);
+    return r && r.studyId === studyId && Array.isArray(r.answers) ? text : null;
+  } catch {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------- start
 
 async function main() {
   if (!studyId) return fail("This link is incomplete (no survey id).");
+  if (offline) {
+    const stored = storedOfflineResult();
+    if (stored) {
+      if (EMBED.wording && EMBED.wording.title) document.title = EMBED.wording.title;
+      return viewOfflineResult(stored, "You already completed this survey");
+    }
+  }
   if (saves && storageGet(doneKey)) {
     return show(el("h1", {}, "Already completed"), el("p", {}, "Thank you, you have already taken part in this survey."));
   }
