@@ -21,6 +21,8 @@ Only the **items file** contains wording; every other format contains ids only.
 
 Keys starting with `_` are comments and ignored. `question.prompt` is shown above each screen; `best`/`worst` are used as accessible button labels.
 
+Optional `"contact": "Jane Doe"` (top level): the person respondents send their result to. Only offline builds use it (embedded by `build_html.py`, shown on the end screen); without it the end screen says "the person who sent you this survey".
+
 The survey link carries a compressed copy of this wording after `#` (built by `design/make_link.py`): `{studyId, title, intro, question, items: {id: text}, segments: {qid: {text, options: {oid: text}}}}`.
 
 ## 2. Design file — `design/studies/<studyId>.design.json` (→ Firestore `studies/{studyId}`)
@@ -68,9 +70,21 @@ Written by the survey page (and by the simulator, in the same shape).
 - `ms` = time on that screen in milliseconds.
 - In a batch file each line additionally has `_id` (the Firestore document id). The simulator adds `client.simulated` and `client.speeder`.
 
+### 3a. Offline result file — `<studyId>-result-<6 random chars>.json`
+
+Saved or copied by an offline build (`build_html.py --mode offline`). Exactly the response of §3 as **one line of compact JSON plus a trailing newline** (so files can be concatenated into a `.jsonl`), with no `createdAt` and one extra field: `client.offline: true`.
+
+```
+{"studyId":"restaurant-demo","version":3,"answers":[{"set":["I07","I03","I12","I01"],"best":"I01","worst":"I12","ms":5400}],"segments":{"S1":"O2"},"durationSec":140,"client":{"mobile":false,"offline":true}}
+```
+
+Ids only, no wording and no name. Pasted copies may arrive pretty-printed or with typographic quotes; `analysis/collect_offline.py` repairs that.
+
 ## 4. Batch file — `analysis/data/<studyId>.<YYYYMMDD-HHMM>.jsonl`
 
 One response document per line, written by `analysis/export.py`. A batch = every response of the study at the time of the pull. Files are never overwritten, so each analysis can be repeated.
+
+Offline pilots: `analysis/collect_offline.py` writes `analysis/data/<studyId>.offline.<YYYYMMDD-HHMM>.jsonl`, same shape, only valid and de-duplicated results, `_id` = the source file name (plus `-1`, `-2` … for a `.txt` with several results).
 
 Simulated batches have a sibling `<name>.truth.json` with the true utilities used; the notebook uses it for its validation section.
 

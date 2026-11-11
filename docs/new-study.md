@@ -57,6 +57,27 @@ Rules of thumb:
 - Close the study when done: `python design/upload_study.py --study <studyId> --status closed --credentials …`. Files opened after that show "Survey not open".
 - Instead of the file you can also share a link (`design/make_link.py`, see docs/survey.md).
 
+## Offline pilot (no Firebase)
+
+For a small internal pilot (about 4 to 20 colleagues) you need no Firebase, no key and no upload. Respondents send their result back to you in Teams.
+
+1. Optional: add `"contact": "<your name>"` to the items file, so the end screen says "send the file to <your name> in Teams".
+2. Build and send the file:
+   ```bash
+   python design/generate_design.py design/studies/<studyId>.items.json --seed 1   # if not done yet
+   python design/build_html.py design/studies/<studyId>.items.json --mode offline
+   ```
+   Send `dist/<studyId>-offline.html` in Teams. It works from disk with no network.
+3. Respondents click **Save result** and send you the `.json` file, or click **Copy result** and paste the text into a Teams message. Put every file you receive into one folder; save pasted text as a `.txt` file in the same folder (several results in one `.txt`, one per line, are fine).
+4. Collect:
+   ```bash
+   python analysis/collect_offline.py <folder> --study <studyId> --design design/studies/<studyId>.design.json
+   ```
+   It lists invalid results with the reason, drops duplicates (same person sent file and text) and writes `analysis/data/<studyId>.offline.<YYYYMMDD-HHMM>.jsonl`.
+5. Analyse: in the notebook set `SOURCE = "file"` and `RESPONSES_FILE` to that `.jsonl` (path relative to `analysis/`), then Run All.
+
+The design must stay the same during the pilot: results from a file built with an older design are rejected by the collector.
+
 ## 4. Analyse
 
 Open `analysis/maxdiff.ipynb`, set `STUDY_ID`, `ITEMS_FILE`, `SOURCE = "firestore"` and `CREDENTIALS`, then Run All. Repeat whenever you want a fresh batch.
