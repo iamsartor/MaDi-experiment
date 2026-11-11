@@ -1,0 +1,39 @@
+{
+  "studyId": "restaurant-demo",
+  "_note": "CONFIDENTIAL WORDING FILE. Never upload to Firestore. Firestore and responses only ever contain the ids below.",
+  "title": "Choosing a restaurant",
+  "intro": "On each screen you will see 4 aspects of a restaurant. Pick the one that matters MOST and the one that matters LEAST to you. There are no right or wrong answers.",
+  "question": {
+    "best": "Most important when choosing a restaurant",
+    "worst": "Least important when choosing a restaurant"
+  },
+  "items": [
+    { "id": "I01", "text": "Taste and quality of the food" },
+    { "id": "I02", "text": "Fair prices for what you get" },
+    { "id": "I03", "text": "Friendly, attentive service" },
+    { "id": "I04", "text": "Short waiting time for food" },
+    { "id": "I05", "text": "Clean dining room and restrooms" },
+    { "id": "I06", "text": "Fresh, local ingredients" },
+    { "id": "I07", "text": "Good vegetarian and vegan options" },
+    { "id": "I08", "text": "Pleasant atmosphere and decor" },
+    { "id": "I09", "text": "Easy online table booking" },
+    { "id": "I10", "text": "Convenient location and parking" },
+    { "id": "I11", "text": "Good drinks and wine list" },
+    { "id": "I12", "text": "Generous portion sizes" },
+    { "id": "I13", "text": "Comfortable noise level" },
+    { "id": "I14", "text": "Takeaway and delivery available" },
+    { "id": "I15", "text": "Clear allergen information" },
+    { "id": "I16", "text": "Loyalty points or regular-guest perks" }
+  ],
+  "segmentQuestions": [
+    {
+      "id": "S1",
+      "text": "How often do you eat out?",
+      "options": [
+        { "id": "O1", "text": "Once a week or more" },
+        { "id": "O2", "text": "A few times a month" },
+        { "id": "O3", "text": "Rarely" }
+      ]
+    }
+  ]
+}
