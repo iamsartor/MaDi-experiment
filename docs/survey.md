@@ -8,8 +8,24 @@ A static, mobile-first page served by GitHub Pages. No build step and no third-p
 | `app.js` | all logic (loading, shuffling, screens, saving) |
 | `styles.css` | layout, light and dark mode |
 | `firebase-config.js` | public Firebase web config (not a secret) |
-| `vendor/firebase-lite.js` | Firebase app + Firestore Lite, built by `tools/build_firebase_bundle.sh` |
+| `vendor/firebase-lite.js` | Firebase app + Firestore Lite (ES module), built by `tools/build_firebase_bundle.sh` |
+| `vendor/firebase-lite.iife.js` | the same as a classic script, inlined into single-file builds |
 | `studies/<id>.design.json` | optional local design copies for `mode=local` (ids only) |
+
+## Two ways to share a study
+
+| | Single HTML file (recommended inside a company) | Link |
+| --- | --- | --- |
+| Build | `python design/build_html.py <items.json>` → `dist/<study>.html` | `python design/make_link.py <items.json>` |
+| Share | send the file, e.g. in Teams | send the link |
+| Respondent opens | downloads the file, opens it in the browser | clicks the link (GitHub Pages) |
+| Wording lives | inside the file | inside the link after `#` |
+| Network | only the final save to Firestore | GitHub Pages + Firestore |
+| Phones | clumsy (downloading files) | fine |
+
+The single file embeds `window.MAXDIFF_EMBED` (design ids, wording, Firebase config, mode) and the Firebase SDK as a classic script (`vendor/firebase-lite.iife.js`), followed by the same `app.js`. It works from `file://`, needs nothing else, and is about 170 KB. `--mode test` builds a file that saves nothing. A file always uses the design it was built with: after regenerating a design, rebuild and re-send. If the study is not open, saving fails with "Survey not open".
+
+Network notes for company use: the browser must reach `firestore.googleapis.com`. Do not restrict the Firebase API key to a website (HTTP referrer), because a file opened from disk has none.
 
 ## The link
 

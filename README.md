@@ -64,6 +64,8 @@ python -m pytest -q
 
 ## New study
 
+Step-by-step guide, including a ready-made AI prompt for the items file: **[docs/new-study.md](docs/new-study.md)**. In short:
+
 1. Copy `design/studies/restaurant-demo.items.json` to `design/studies/<your-study>.items.json`, set `studyId` and the wording. Use neutral ids (`I01`, `I02` …) that reveal nothing.
 2. Run the design generator on it and check the report says **PASS**.
 3. Run the simulator on the new design and the notebook on its output, to see the screens and charts before going live.
@@ -74,6 +76,8 @@ python -m pytest -q
 | Path | What |
 | --- | --- |
 | `design/generate_design.py` | balanced design generator + balance report → [docs/design-generator.md](docs/design-generator.md) |
+| `design/build_html.py` | builds ONE self-contained survey HTML file to share in Teams → [docs/new-study.md](docs/new-study.md) |
+| `design/check_items.py` | checks an items file (e.g. one an AI wrote) |
 | `design/make_link.py` | builds the survey link with the wording after `#` → [docs/survey.md](docs/survey.md) |
 | `design/upload_study.py` | uploads a design to Firestore, changes study status |
 | `design/studies/` | per-study items files (local), design files, demo truth files |
